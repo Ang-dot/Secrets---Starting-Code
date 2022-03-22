@@ -8,6 +8,7 @@ const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const findOrCreate = require("mongoose-findorcreate");
 
 const app = express();
@@ -24,7 +25,6 @@ app.use(session({
 }));
 app.use(passport.initialize());
 app.use(passport.session());
-
 
 mongoose.connect("mongodb://127.0.0.1:27017/userDB", (err) => {
 
@@ -43,7 +43,8 @@ mongoose.connect("mongodb://127.0.0.1:27017/userDB", (err) => {
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
-    googleId: String
+    googleId: String,
+    linkedInId: String
 });
  
 
@@ -58,6 +59,7 @@ passport.serializeUser((user, done) => {
     done(null, user.id);
 });
 
+
 passport.deserializeUser((id, done) => {
     User.findById(id, (err, user) => {
         done(err, user);
@@ -66,8 +68,8 @@ passport.deserializeUser((id, done) => {
 
 
 passport.use(new GoogleStrategy({
-    clientID: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: "http://localhost:3000/auth/google/secrets",
     userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
   },
@@ -80,16 +82,29 @@ passport.use(new GoogleStrategy({
 ));
 
 
-app.get("/", (req, res) => {
+passport.use(new LinkedInStrategy({
+    clientID: process.env.LINKEDIN_KEY,
+    clientSecret: process.env.LINKEDIN_SECRET,
+    callbackURL: "http://localhost:3000/auth/linkedin/secrets",
+    scope: ["r_liteprofile"],
+    state: false
+  }, (accessToken, refreshToken, profile, cb) => {
+    console.log(profile);
+    User.findOrCreate({ linkedInId: profile.id }, function (err, user) {
+    return cb(null, user);
+    });
+  }));
 
+
+app.get("/", (req, res) => {
         res.render("home");
-        
     });
 
 
 app.get("/auth/google", 
     passport.authenticate("google", { scope: ["profile"] })
 );
+
 
 app.get("/auth/google/secrets", 
   passport.authenticate("google", { failureRedirect: "/login" }),
@@ -98,6 +113,17 @@ app.get("/auth/google/secrets",
     res.redirect("/secrets");
   });
 
+
+app.get("/auth/linkedin", 
+  passport.authenticate("linkedin", { state: "SOME STATE" })
+);
+
+
+app.get("/auth/linkedin/secrets", 
+passport.authenticate("linkedin", { 
+    successRedirect: '/secrets',
+    failureRedirect: '/login'
+}));
 
 
 app.route("/login")
@@ -146,6 +172,21 @@ app.get("/secrets", (req, res) => {
 
     }
 });
+
+
+app.get("/submit", (req, res) => {
+
+    if (req.isAuthenticated()) {
+
+        res.render("submit");
+
+    } else {
+
+        res.redirect("/login");
+
+    }
+});
+
 
 app.route("/register")
     .get((req, res) => {
