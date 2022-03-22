@@ -44,7 +44,8 @@ const userSchema = new mongoose.Schema({
     username: String,
     password: String,
     googleId: String,
-    linkedInId: String
+    linkedInId: String,
+    secrets: []
 });
  
 
@@ -174,18 +175,24 @@ app.get("/secrets", (req, res) => {
 });
 
 
-app.get("/submit", (req, res) => {
+app.route("/submit")
+    .get((req, res) => {
 
-    if (req.isAuthenticated()) {
+        if (req.isAuthenticated()) {
 
-        res.render("submit");
+            res.render("submit");
 
-    } else {
+        } else {
 
-        res.redirect("/login");
+            res.redirect("/login");
 
-    }
-});
+        }
+    })
+    .post((req, res) => {
+
+        User.findByIdAndUpdate(req.user.id, 
+
+    })
 
 
 app.route("/register")
