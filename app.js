@@ -162,36 +162,34 @@ app.route("/login")
 
 
 app.get("/secrets", (req, res) => {
-
-    if (req.isAuthenticated()) {
-
-        res.render("secrets");
-
-    } else {
-
-        res.redirect("/login");
-
-    }
+    User.find({ secrets: { $ne: null } }, (err, users) => {
+        if (!err) {
+            res.render("secrets", {usersWithSecret: users});
+        }
+    });
 });
 
 
 app.route("/submit")
     .get((req, res) => {
-
         if (req.isAuthenticated()) {
-
             res.render("submit");
-
         } else {
-
             res.redirect("/login");
-
         }
     })
     .post((req, res) => {
+        User.findByIdAndUpdate(req.user.id, { $push: { secrets: req.body.secret } }, (err) => {
+            if (!err) {
+                console.log("Updated the database successfully!");
+                res.redirect("/secrets");
 
-        User.findByIdAndUpdate(req.user.id, 
+            } else {
 
+                console.log(err);
+
+            }
+        })
     })
 
 
